@@ -1,0 +1,2 @@
+# Final
+I would say there was a lot of material that I enjoyed throughout the semester in STA309. It is difficult to pick one in particular, however, one that stands out to me would be the random tree fit. Although this may seem like a nuisance to some people, there are a lot of capabilities with advanced coding, and the pinnacle of those capabilities is predictive modeling. Although the random trees we worked with were a bit rudimentary, it gives me a lot of background information if I continue working in a data-driven environment.
