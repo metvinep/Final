@@ -1,0 +1,143 @@
+---
+title: "Untitled"
+author: "Elliot Metviner"
+date: '2023-05-10'
+output: html_document
+---
+
+```{r}
+
+library(tidyverse)
+library(caret)
+
+heart_disease1 <- read.csv("heart_disease.csv")
+
+heart_disease <- heart_disease1
+
+heart_disease$HeartDisease <- factor(heart_disease$HeartDisease, levels=c(0,1), labels=c("FALSE","TRUE"))
+heart_disease$FastingBS <- factor(heart_disease$FastingBS, levels=c(0,1), labels=c("FALSE","TRUE"))
+
+HT_Index <- createDataPartition(1:nrow(heart_disease), p=0.7)$Resample1  
+
+
+heart_disease <- heart_disease %>%
+  filter(row_number() %in% HT_Index)
+training_method <- trainControl(method="repeatedcv", number=5,
+                                repeats=10)
+
+set.seed(10)
+fit <- train(HeartDisease ~ Age + Sex + ChestPainType + RestingBP +
+                      Cholesterol + FastingBS + RestingECG + MaxHR + ExerciseAngina +
+                      Oldpeak + ST_Slope,
+                    data=heart_disease,
+                    trControl=training_method,
+                    method="glm",
+             family=binomial)
+library(rpart)
+set.seed(10)
+mod1 <- train(HeartDisease ~ Age + Sex + ChestPainType + RestingBP +
+                  Cholesterol + FastingBS + RestingECG + MaxHR + ExerciseAngina +
+                  Oldpeak + ST_Slope,
+                data=heart_disease,
+                method="rf",
+                trControl=training_method,
+                tuneGrid=expand.grid(mtry=1:4),
+                importance=TRUE)
+print(mod1)
+print(fit)
+
+plot(mod1)
+set.seed(1)
+performances <- resamples(list(Reg = fit,
+                               random_forest = mod1))
+summary(performances)
+ggplot(performances) +
+  theme_minimal()
+plot(varImp(mod1))
+
+
+## Visualization
+library(ggplot2)
+library(patchwork)
+library(png)
+library(jpeg)
+library(grid)
+
+library(magick)
+plot_1 <- plot(varImp(mod1))
+
+
+heart_disease_flat <- heart_disease %>%
+  filter(ST_Slope == "Flat")  
+
+ggplot(heart_disease_flat, aes(x=ST_Slope, fill=HeartDisease)) + 
+  geom_bar(position="fill") +
+  scale_fill_manual(values=c("skyblue", "#F8766D")) +
+  coord_cartesian(expand=FALSE) +
+  theme_minimal() +
+  scale_y_continuous(limits=c(0, 1)) +
+  annotate("label", x="Flat", y=.9, label="Does Not have cardiovascular disease",color="skyblue") + 
+  annotate("label", x="Flat", y=.5, label="Has cardiovascular disease", color="#F8766D") + 
+  labs(x="",
+       y="",
+       title="Flat peak exercist ST segment in Relation to Having Cardiovascular Disease",
+       caption = "Data:") +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "white"),
+        legend.position = "none",
+        plot.title = element_text(hjust=.5),
+        plot.subtitle = element_text(hjust = 0), 
+        plot.caption = element_text(hjust = 1))
+
+excerciseangina <- heart_disease %>%
+  mutate(ExerciseAngina=str_replace(ExerciseAngina, "Y", "Had exercise enduced angina"),
+         ExerciseAngina=str_replace(ExerciseAngina, "N", "Did not have exercise enduced angina"))
+ggplot(excerciseangina, aes(x=ExerciseAngina, fill=HeartDisease)) + 
+  geom_bar(position="fill") +
+  coord_cartesian(expand=FALSE) +
+  theme_minimal() +
+  scale_fill_manual(values=c("skyblue", "#F8766D")) +
+  annotate("label", x="Did not have exercise enduced angina", y= .9, label="Does not have cardiovascular disease",color="blue") + 
+  annotate("label", x="Did not have exercise enduced angina", y=.25, label="Has cardiovascular disease", color="red") +
+  annotate("label", x="Had exercise enduced angina", y= .9, label="Does not have cardiovascular disease",color="blue") + 
+  annotate("label", x="Had exercise enduced angina", y=.25, label="Has cardiovascular disease", color="red") +
+  labs(x="",
+       y="",
+       title="Exercise Enduced Angina Compared to Cardiovascular Disease",
+       caption = "Data:") +
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "white"),
+        legend.position = "none",
+        plot.title = element_text(hjust=.5),
+        plot.subtitle = element_text(hjust = 0), 
+        plot.caption = element_text(hjust = 1))
+
+ggplot(heart_disease, aes(x=Sex, fill=HeartDisease)) + 
+  geom_bar(position="fill") +
+  coord_cartesian(expand=FALSE) +
+  theme_minimal() +
+  scale_fill_manual(values=c("skyblue", "#F8766D")) +
+  annotate("label", x="F", y= .75, label="Does not have cardiovascular disease",color="blue") + 
+  annotate("label", x="F", y=.18, label="Has cardiovascular disease", color="red") +
+  annotate("label", x="M", y= .75, label="Does not have cardiovascular disease",color="blue") + 
+  annotate("label", x="M", y=.18, label="Has cardiovascular disease", color="red") +
+  labs(x="",
+       y="",
+       title="Gender compared to Cardiovascular Disease",
+       caption = "")+
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+        axis.line = element_line(colour = "white"),
+        legend.position = "none",
+        plot.title = element_text(hjust=.5),
+        plot.subtitle = element_text(hjust = 0), 
+        plot.caption = element_text(hjust = 1))
+
+
+```
+
+**The random tree model outperformed the regression fit model by a small percentage. All though it has a lower minimum accuracy, its maximum accuracy is slightly higher, which is why it is the more favorable model. A mere one percent increase is contextually important because that means the model was better at accuratly predicting existing data, which in turn means the test is more reliable which means that more individuals with heart disease can be correctly diagnosed. **
+
+**Based off of the model, the most important predictors for heart disease is if an individual has a ST_Slope that is up, is a male, experiences Angina during exercise or has an ST-Slope that is Flat. Additionally, high cholesterol, ATA tpe chest pain and a high heart rate are predictors, however a bit lest important then the ones previously mentioned. This can be seen from the importance graph that is in the code provided above.**
